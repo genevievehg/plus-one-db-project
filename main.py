@@ -1,7 +1,14 @@
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from db.connection import get_connection
+from db.auth import verify_password, create_access_token
 
 app = FastAPI()
+
+class CredentialsRequest(BaseModel):
+    email: str
+    password: str
+
 
 @app.get("/api/events")
 def get_events():
@@ -51,14 +58,25 @@ def get_event(event_id: str):
             )
     cursor.close()
     conn.close()
-    return {"Event": {
-        "id": row[0],
-        "title": row[1],
-        "event_description": row[2],
-        "starts_at": row[3],
-        "ends_at": row[4],
-        "location": row[5],
-        "address": row[6],
-        "capacity": row[7],
-        "created_at": row[8],
+    return {"Event": {"id": row[0], "title": row[1], "event_description": row[2],
+        "starts_at": row[3], "ends_at": row[4], "location": row[5], "address": row[6],
+        "capacity": row[7], "created_at": row[8],
     }}
+
+@app.post("/api/auth/login")
+def user_login(payload:CredentialsRequest):
+    if payload.email == '':
+        raise HTTPException(status_code = 400, detail = 'Missing email')
+    if payload.password == '':
+        raise HTTPException(status_code = 400, detail = 'Missing password')
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, user_password FROM users WHERE email = %s",
+            (payload.email,)
+        )
+        row = cur.fetchone()
+        if row is None or not verify_password(payload.password, row[1]):
+            raise HTTPException(status_code = 401, detail = "Invalid email or password")
+        token = create_access_token(row[0])
+        return {'access_token': token, 'token_type': 'bearer'}
