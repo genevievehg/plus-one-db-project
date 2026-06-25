@@ -1,5 +1,5 @@
 import json
-
+from db.auth import hash_password
 
 #converts user data to usable list of tuples; corrects input order
 def normalise_user_data(data_input):
@@ -7,8 +7,8 @@ def normalise_user_data(data_input):
     for user in data_input:
         name = user.get('name')
         email = user.get('email')
-        password = user.get('password')
-        normalised_users.append((email, password, name))
+        hashed_password = hash_password(user.get('password'))
+        normalised_users.append((email, hashed_password, name))
     return normalised_users
 
 
