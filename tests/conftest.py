@@ -17,10 +17,10 @@ def sample_event():
         """ 
         INSERT INTO events (title, event_description, 
         starts_at, ends_at, organiser_id, venue_id)
-        VALUES ('test_event', 'test event for testing', 
+        VALUES (%s,%s,%s,%s,%s,%s) 
+        RETURNING id""", 
+        ('test_event', 'test event for testing', 
         '2026-06-24 09:00:00', '2036-06-24 09:00:00', 1, 1)
-        RETURNING id
-        """
     )
     id = cursor.fetchone()[0]
     conn.commit()
@@ -51,8 +51,18 @@ def test_user():
     cursor.close()
     conn.close()
 
-
-#@pytest.fixture
-#def auth_headers():
- #   token = create_access_token(1)
- #   return {'Authorisation': f'Bearer {token}'}
+@pytest.fixture
+def cleanup_users():
+    """Collects users created directly through the API during a test
+    so they can be removed."""
+    created_users = []
+    yield created_users
+    if created_users:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM users WHERE id = ANY(%s)", (created_users,)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
