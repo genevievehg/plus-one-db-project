@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from db.connection import get_connection
-from db.auth import verify_password, create_access_token, hash_password
+from db.auth import verify_password, create_access_token, hash_password, get_current_user
 
 app = FastAPI()
 
@@ -85,7 +85,7 @@ def user_login(payload:CredentialsRequest):
         if row is None or not verify_password(payload.password, row[1]):
             raise HTTPException(status_code = 401, detail = "Invalid email or password")
         token = create_access_token(row[0])
-        return {'access_token': token, 'token_type': 'bearer'}
+        return {'token': token}
 
 @app.post("/api/auth/register", status_code = 201)
 def user_register(payload:User):
@@ -120,3 +120,36 @@ def user_register(payload:User):
         "name": payload.user_name,
         "email": payload.email,
         "created_at": row_2[1]}}
+
+@app.post("/api/events/{event_id}/rsvp", status_code = 201)
+def user_rsvp(event_id: int, user_id = Depends(get_current_user)):
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute(
+            """SELECT * from events
+            WHERE id = %s""",
+            (event_id,))
+        row_1 = cur.fetchone()
+        if row_1 is None:
+            raise HTTPException(status_code = 404, detail = "Event does not exist")
+        
+        cur.execute(
+            """SELECT * from rsvps
+            WHERE attendee_id = %s AND event_id = %s""",
+            (user_id, event_id,))
+        row_1 = cur.fetchone()
+        if row_1:
+            raise HTTPException(status_code = 409, detail = "RSVP already exists")
+        
+        cur.execute("""INSERT INTO rsvps 
+        (attendee_id, event_id)
+        VALUES (%s, %s)
+        RETURNING *""",
+        (user_id, event_id,))
+        row = cur.fetchone()
+        conn.commit()
+        return {"rsvp": {
+        "id": row[0],
+        "attendee_id": row[1],
+        "event_id": row[2],
+        "created_at": row[3]}}
