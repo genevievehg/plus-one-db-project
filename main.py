@@ -1,13 +1,18 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from db.connection import get_connection
-from db.auth import verify_password, create_access_token
+from db.auth import verify_password, create_access_token, hash_password
 
 app = FastAPI()
 
 class CredentialsRequest(BaseModel):
     email: str
     password: str
+
+class User(BaseModel):
+    email: str
+    user_password: str
+    user_name: str
 
 
 @app.get("/api/events")
@@ -65,14 +70,15 @@ def get_event(event_id: str):
 
 @app.post("/api/auth/login")
 def user_login(payload:CredentialsRequest):
-    if payload.email == '':
+    if not payload.email:
         raise HTTPException(status_code = 400, detail = 'Missing email')
-    if payload.password == '':
+    if not payload.password:
         raise HTTPException(status_code = 400, detail = 'Missing password')
     conn = get_connection()
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, user_password FROM users WHERE email = %s",
+            """SELECT id, user_password FROM users
+            WHERE email = %s""",
             (payload.email,)
         )
         row = cur.fetchone()
@@ -80,3 +86,37 @@ def user_login(payload:CredentialsRequest):
             raise HTTPException(status_code = 401, detail = "Invalid email or password")
         token = create_access_token(row[0])
         return {'access_token': token, 'token_type': 'bearer'}
+
+@app.post("/api/auth/register", status_code = 201)
+def user_register(payload:User):
+    if not payload.email:
+        raise HTTPException(status_code = 400, detail = 'Missing email')
+    if not payload.user_password:
+        raise HTTPException(status_code = 400, detail = 'Missing password')
+    if not payload.user_name:
+        raise HTTPException(status_code = 400, detail = 'Name missing')
+        
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute(
+            """SELECT * from users
+            WHERE email = %s""",
+            (payload.email,))
+        row_1 = cur.fetchone()
+        if row_1 is not None:
+            raise HTTPException(status_code = 409, detail = "Email address already registered")
+        
+        hashed_password = hash_password(payload.user_password)
+        cur.execute(
+            """INSERT INTO users 
+            (email, user_password, user_name) VALUES (%s,%s,%s)
+            RETURNING id, created_at""",
+            (payload.email, hashed_password, payload.user_name,)
+        )
+        row_2 = cur.fetchone()
+        conn.commit()
+        return {"user": {
+        "id": row_2[0],
+        "name": payload.user_name,
+        "email": payload.email,
+        "created_at": row_2[1]}}
