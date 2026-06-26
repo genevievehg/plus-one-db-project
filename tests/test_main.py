@@ -71,4 +71,24 @@ def test_user_register_returns_400_for_missing_field(client):
             'user_password': 'test_password',
             'user_name': 'test_user_name',})
     assert response.status_code == 400
-#- Missing fields return a `400`
+
+def test_user_rsvp_returns_201_for_authorised_user(client, auth_headers, cleanup_rsvps):
+    response = client.post('/api/events/1/rsvp', headers = auth_headers)
+    assert response.status_code == 201
+    body = response.json()
+    assert body['rsvp']['attendee_id'] == 1
+    assert body['rsvp']['event_id'] == 1
+    cleanup_rsvps.append(body['rsvp']['id'])
+
+def test_user_rsvp_returns_401_for_unauthorised_user(client):
+    response = client.post('/api/events/2/rsvp')
+    assert response.status_code == 401
+
+def test_user_rsvp_returns_404_for_unknown_event_id(client, auth_headers):
+    response = client.post('/api/events/99/rsvp', headers = auth_headers)
+    assert response.status_code == 404
+
+#- A duplicate RSVP returns a `409`
+def test_user_rsvp_returns_409_for_duplicate_rsvp(client, auth_headers):
+    response = client.post(f'/api/events/2/rsvp', headers = auth_headers)
+    assert response.status_code == 409

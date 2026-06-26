@@ -66,3 +66,26 @@ def cleanup_users():
         conn.commit()
         cursor.close()
         conn.close()
+
+@pytest.fixture
+def auth_headers():
+    token = create_access_token(1)
+    return {'Authorization': f'Bearer {token}'}
+
+@pytest.fixture
+def cleanup_rsvps():
+    """Collects rsvps created directly through the API during a test
+    so they can be removed."""
+    created_rsvps = []
+    yield created_rsvps
+    if created_rsvps:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM rsvps WHERE id = ANY(%s)", (created_rsvps,)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+
