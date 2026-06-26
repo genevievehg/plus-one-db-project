@@ -87,8 +87,21 @@ def test_user_rsvp_returns_401_for_unauthorised_user(client):
 def test_user_rsvp_returns_404_for_unknown_event_id(client, auth_headers):
     response = client.post('/api/events/99/rsvp', headers = auth_headers)
     assert response.status_code == 404
-
-#- A duplicate RSVP returns a `409`
+    
 def test_user_rsvp_returns_409_for_duplicate_rsvp(client, auth_headers):
-    response = client.post(f'/api/events/2/rsvp', headers = auth_headers)
+    response = client.post('/api/events/2/rsvp', headers = auth_headers)
     assert response.status_code == 409
+
+def test_delete_rsvp_returns_204(client, auth_headers, sample_rsvp):
+    response = client.delete(f'/api/events/{sample_rsvp['event_id']}/rsvp/me', headers = auth_headers)
+    assert response.status_code == 204
+
+def test_delete_rsvp_without_authorsiation_returns_401(client):
+    response = client.delete('/api/events/2/rsvp/me')
+    assert response.status_code == 401
+
+#- Attempting to cancel an RSVP that does not exist returns a `404`
+
+def test_delete_nonexisting_rsvp_returns_404(client, auth_headers):
+    response = client.delete('/api/events/1/rsvp/me', headers = auth_headers)
+    assert response.status_code == 404

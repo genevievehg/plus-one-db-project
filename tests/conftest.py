@@ -89,3 +89,20 @@ def cleanup_rsvps():
         conn.close()
 
 
+@pytest.fixture
+def sample_rsvp():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """ 
+        INSERT INTO rsvps (attendee_id, event_id)
+        VALUES (%s, %s)
+        RETURNING id""", 
+        (1, 4)
+    )
+    id = cursor.fetchone()[0]
+    conn.commit()
+    yield {'id': id,
+           'event_id': 4}
+    cursor.close()
+    conn.close()
