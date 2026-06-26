@@ -153,3 +153,21 @@ def user_rsvp(event_id: int, user_id = Depends(get_current_user)):
         "attendee_id": row[1],
         "event_id": row[2],
         "created_at": row[3]}}
+
+@app.delete("/api/events/{event_id}/rsvp/me", status_code = 204)
+def delete_rsvp(event_id: int, user_id = Depends(get_current_user)):
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute(
+            """SELECT * from rsvps
+            WHERE event_id = %s and attendee_id = %s""",
+            (event_id, user_id,))
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code = 404, detail = "RSVP does not exist")
+
+        cur.execute(
+            """DELETE from rsvps
+            WHERE event_id = %s AND attendee_id = %s""",
+            (event_id, user_id,))
+        conn.commit()
