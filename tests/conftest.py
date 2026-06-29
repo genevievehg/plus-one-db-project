@@ -106,3 +106,19 @@ def sample_rsvp():
            'event_id': 4}
     cursor.close()
     conn.close()
+
+@pytest.fixture
+def cleanup_events():
+    """Collects events created directly through the API during a test
+    so they can be removed."""
+    created_events = []
+    yield created_events
+    if created_events:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM events WHERE id = ANY(%s)", (created_events,)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()

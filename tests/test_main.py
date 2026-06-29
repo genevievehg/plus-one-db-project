@@ -100,8 +100,49 @@ def test_delete_rsvp_without_authorsiation_returns_401(client):
     response = client.delete('/api/events/2/rsvp/me')
     assert response.status_code == 401
 
-#- Attempting to cancel an RSVP that does not exist returns a `404`
-
 def test_delete_nonexisting_rsvp_returns_404(client, auth_headers):
     response = client.delete('/api/events/1/rsvp/me', headers = auth_headers)
     assert response.status_code == 404
+
+def test_create_event_returns_201(client, auth_headers, cleanup_events):
+    response = client.post('/api/events', headers = auth_headers, json={
+            'title': 'test_title', 
+            'description': 'test_event_description', 
+            'starts_at': '2026-06-24 09:00:00', 
+            'ends_at': '2036-06-24 09:00:00',
+            'venue_id': 1,})
+    assert response.status_code == 201
+    body = response.json()
+    assert body['Event']['organiser_id'] == 1
+    cleanup_events.append(body['Event']['id'])
+
+
+def test_create_event_without_authorisation_returns_401(client):
+    response = client.post('/api/events', json={
+            'title': 'test_title', 
+            'description': 'test_event_description', 
+            'starts_at': '2026-06-24 09:00:00', 
+            'ends_at': '2036-06-24 09:00:00', 
+            'organiser_id': 1, 
+            'venue_id': 1,})
+    assert response.status_code == 401
+    
+def test_create_event_with_missing_field_returns_400(client, auth_headers):
+    response = client.post('/api/events', headers = auth_headers, json={
+            'title': 'test_title', 
+            'description': '', 
+            'starts_at': '2026-06-24 09:00:00', 
+            'ends_at': '2036-06-24 09:00:00', 
+            'organiser_id': 1, 
+            'venue_id': 1,})
+    assert response.status_code == 400
+
+def test_create_event_with_invalid_date_returns_400(client, auth_headers):
+    response = client.post('/api/events', headers = auth_headers, json={
+            'title': 'test_title', 
+            'description': 'test_event_description', 
+            'starts_at': '2036-06-24 09:00:00', 
+            'ends_at': 'June 24th 1pm', 
+            'organiser_id': 1, 
+            'venue_id': 1,})
+    assert response.status_code == 400
