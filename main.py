@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
+from datetime import datetime
 from db.connection import get_connection
 from db.auth import verify_password, create_access_token, hash_password, get_current_user
 
@@ -171,3 +172,55 @@ def delete_rsvp(event_id: int, user_id = Depends(get_current_user)):
             WHERE event_id = %s AND attendee_id = %s""",
             (event_id, user_id,))
         conn.commit()
+
+@app.post("/api/events", status_code = 201)
+def create_event(payload: dict, user_id = Depends(get_current_user)):
+    event_title = payload.get('title')
+    event_description = payload.get('description')
+    starts_at = payload.get('starts_at')
+    ends_at = payload.get('ends_at')
+    venue_id = payload.get('venue_id')
+
+    try:
+        datetime.strptime(starts_at, "%Y-%m-%d %H:%M:%S")
+    except:
+        raise HTTPException(status_code = 400, detail = "Invalid date format")
+    try:
+        datetime.strptime(ends_at, "%Y-%m-%d %H:%M:%S")
+    except:
+        raise HTTPException(status_code = 400, detail = "Invalid date format")
+  
+
+    if not event_title:
+        raise HTTPException(status_code = 400, detail = "Missing data. All fields required")
+    if not event_description:
+        raise HTTPException(status_code = 400, detail = "Missing data. All fields required")
+    if not starts_at:
+        raise HTTPException(status_code = 400, detail = "Missing data. All fields required")
+    if not ends_at:
+        raise HTTPException(status_code = 400, detail = "Missing data. All fields required")
+    if not venue_id:
+        raise HTTPException(status_code = 400, detail = "Missing data. All fields required")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""INSERT INTO events (title, 
+    event_description, starts_at, ends_at, organiser_id, venue_id)
+    VALUES (%s,%s,%s,%s,%s,%s)
+    RETURNING id, created_at""",
+    (event_title, event_description, starts_at, ends_at, user_id, venue_id,))
+    row = cursor.fetchone()
+    id = row[0]
+    created_at = row[1]
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return {"Event":{"id": id,
+      "title": event_title,
+      "description": event_description,
+      "starts_at": starts_at,
+      "ends_at": ends_at,
+      "venue_id": venue_id,
+      "organiser_id": user_id,
+      "created_at": created_at}}
