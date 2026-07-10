@@ -16,6 +16,10 @@ class User(BaseModel):
     user_name: str
 
 
+@app.get("/api/health")
+def get_health():
+    return {"Status": "healthy"}
+
 @app.get("/api/events")
 def get_events():
     conn = get_connection()
