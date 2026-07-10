@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.environ["DATABASE_URL"]
+database_name = os.environ["DATABASE_NAME"]
 
 def get_connection():
-    return psycopg2.connect(dbname='nc_plus_one')
+    return psycopg2.connect(dbname=database_name)
 
