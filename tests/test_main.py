@@ -146,3 +146,25 @@ def test_create_event_with_invalid_date_returns_400(client, auth_headers):
             'organiser_id': 1, 
             'venue_id': 1,})
     assert response.status_code == 400
+
+def test_update_event_returns_200(client, auth_headers):
+    response = client.patch('/api/events/1', headers = auth_headers, json={ 
+            'description': 'test_event_description',
+            'venue_id': 1,})
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {"Event":{"id": 1,
+      "title": 'Leeds Tech Meetup – June Edition',
+      "description": 'test_event_description',
+      "starts_at": '2026-06-18T18:30:00+01:00',
+      "ends_at": '2026-06-18T21:00:00+01:00',
+      "venue_id": 1,
+      "organiser_id": 1,
+      "created_at": '2026-06-30T14:36:01.568726+01:00'}}
+
+def test_update_event_returns_401_with_invalid_credentials(client):
+    response = client.patch('/api/events/1', json={ 
+            'description': 'test_event_description',
+            'venue_id': 1,})
+    assert response.status_code == 401
+    

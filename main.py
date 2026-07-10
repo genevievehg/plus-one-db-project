@@ -224,3 +224,93 @@ def create_event(payload: dict, user_id = Depends(get_current_user)):
       "venue_id": venue_id,
       "organiser_id": user_id,
       "created_at": created_at}}
+
+@app.patch("/api/events/{event_id}")
+def update_event(payload: dict, event_id: int, user_id = Depends(get_current_user)):
+    event_title = payload.get('title')
+    event_description = payload.get('description')
+    starts_at = payload.get('starts_at')
+    ends_at = payload.get('ends_at')
+    venue_id = payload.get('venue_id')
+
+    if event_title is not None:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""UPDATE events 
+        SET title = %s
+        WHERE id = %s AND organiser_id = %s
+        RETURNING id, created_at""",
+        (event_title, event_id, user_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    if event_description is not None:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""UPDATE events 
+        SET event_description = %s
+        WHERE id = %s AND organiser_id = %s
+        RETURNING id, created_at""",
+        (event_description, event_id, user_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    if starts_at is not None:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""UPDATE events 
+        SET starts_at = %s
+        WHERE id = %s AND organiser_id = %s
+        RETURNING id, created_at""",
+        (starts_at, event_id, user_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    if ends_at is not None:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""UPDATE events 
+        SET ends_at = %s
+        WHERE id = %s AND organiser_id = %s
+        RETURNING id, created_at""",
+        (ends_at, event_id, user_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+    
+    if venue_id is not None:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""UPDATE events 
+        SET venue_id = %s
+        WHERE id = %s AND organiser_id = %s
+        RETURNING id, created_at""",
+        (venue_id, event_id, user_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+            """
+            SELECT * FROM events
+            WHERE events.id = %s
+            """,
+            (event_id,),)
+    row = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return {"Event": {"id": row[0][0], "title": row[0][1], "description": row[0][2],
+        "starts_at": row[0][3], "ends_at": row[0][4], "venue_id": row[0][5], "organiser_id": row[0][6],
+        "created_at": row[0][7],
+    }}
