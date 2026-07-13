@@ -407,3 +407,26 @@ def get_attendees_for_event(event_id, user_id = Depends(get_current_user)):
         
         conn.close()
         return {"Attendees": [dict(zip(columns, row)) for row in rows]}
+
+@app.get("/api/user/me/events")
+def get_user_events(user_id = Depends(get_current_user)):
+
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute("""SELECT 
+            events.id, 
+            events.title, 
+            events.starts_at, 
+            rsvps.created_at AS rsvp_date, 
+            RANK() OVER  
+            (ORDER BY events.starts_at) AS event_rank,
+            COUNT(*) OVER () AS total_rsvps 
+            FROM rsvps 
+            INNER JOIN events on rsvps.event_id = events.id  
+            WHERE attendee_id = %s""",
+            (user_id,),)
+        columns = [desc[0] for desc in cur.description]    
+        rows = cur.fetchall()
+        
+        conn.close()
+        return {"Events": [dict(zip(columns, row)) for row in rows]}
