@@ -237,14 +237,67 @@ def update_event(payload: dict, event_id: int, user_id = Depends(get_current_use
     ends_at = payload.get('ends_at')
     venue_id = payload.get('venue_id')
 
+    if starts_at:
+        try:
+            datetime.strptime(starts_at, "%Y-%m-%d %H:%M:%S")
+        except:
+            raise HTTPException(status_code = 400, detail = "Invalid date format")
+    if ends_at:
+        try:
+            datetime.strptime(ends_at, "%Y-%m-%d %H:%M:%S")
+        except:
+            raise HTTPException(status_code = 400, detail = "Invalid date format")
+    
+    if starts_at and ends_at:
+        if datetime.strptime(starts_at, "%Y-%m-%d %H:%M:%S") > datetime.strptime(ends_at, "%Y-%m-%d %H:%M:%S"):
+            raise HTTPException(status_code = 400, detail = "Event start time must be before end time")
+    conn = get_connection()
+
+    if starts_at is not None and ends_at is None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT * from events
+                WHERE id = %s""",
+                (event_id,))
+            ends_at = cur.fetchone()[4]
+            if datetime.strptime(starts_at, "%Y-%m-%d %H:%M:%S") > ends_at.replace(tzinfo=None):
+                raise HTTPException(status_code = 400, detail = "Event start time must be before end time")
+    
+    if starts_at is None and ends_at is not None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT * from events
+                WHERE id = %s""",
+                (event_id,))
+            starts_at = cur.fetchone()[3]
+            if starts_at.replace(tzinfo=None) > datetime.strptime(ends_at, "%Y-%m-%d %H:%M:%S"):
+                raise HTTPException(status_code = 400, detail = "Event start time must be before end time")
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """SELECT * from events
+            WHERE id = %s""",
+            (event_id,))
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code = 404, detail = "Event not found")
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """SELECT * from events
+            WHERE id = %s and organiser_id = %s""",
+            (event_id, user_id,))
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code = 403, detail = "Forbidden. Invalid user.")
+
     if event_title is not None:
         conn = get_connection()
         cursor = conn.cursor()
 
         cursor.execute("""UPDATE events 
         SET title = %s
-        WHERE id = %s AND organiser_id = %s
-        RETURNING id, created_at""",
+        WHERE id = %s AND organiser_id = %s""",
         (event_title, event_id, user_id,))
         conn.commit()
         cursor.close()
@@ -256,8 +309,7 @@ def update_event(payload: dict, event_id: int, user_id = Depends(get_current_use
 
         cursor.execute("""UPDATE events 
         SET event_description = %s
-        WHERE id = %s AND organiser_id = %s
-        RETURNING id, created_at""",
+        WHERE id = %s AND organiser_id = %s""",
         (event_description, event_id, user_id,))
         conn.commit()
         cursor.close()
@@ -269,8 +321,7 @@ def update_event(payload: dict, event_id: int, user_id = Depends(get_current_use
 
         cursor.execute("""UPDATE events 
         SET starts_at = %s
-        WHERE id = %s AND organiser_id = %s
-        RETURNING id, created_at""",
+        WHERE id = %s AND organiser_id = %s""",
         (starts_at, event_id, user_id,))
         conn.commit()
         cursor.close()
@@ -282,8 +333,7 @@ def update_event(payload: dict, event_id: int, user_id = Depends(get_current_use
 
         cursor.execute("""UPDATE events 
         SET ends_at = %s
-        WHERE id = %s AND organiser_id = %s
-        RETURNING id, created_at""",
+        WHERE id = %s AND organiser_id = %s""",
         (ends_at, event_id, user_id,))
         conn.commit()
         cursor.close()
@@ -295,8 +345,7 @@ def update_event(payload: dict, event_id: int, user_id = Depends(get_current_use
 
         cursor.execute("""UPDATE events 
         SET venue_id = %s
-        WHERE id = %s AND organiser_id = %s
-        RETURNING id, created_at""",
+        WHERE id = %s AND organiser_id = %s""",
         (venue_id, event_id, user_id,))
         conn.commit()
         cursor.close()
@@ -310,11 +359,16 @@ def update_event(payload: dict, event_id: int, user_id = Depends(get_current_use
             WHERE events.id = %s
             """,
             (event_id,),)
-    row = cursor.fetchall()
+    row = cursor.fetchone()
     cursor.close()
     conn.close()
 
-    return {"Event": {"id": row[0][0], "title": row[0][1], "description": row[0][2],
-        "starts_at": row[0][3], "ends_at": row[0][4], "venue_id": row[0][5], "organiser_id": row[0][6],
-        "created_at": row[0][7],
+    return {"Event": {"id": row[0], 
+        "title": row[1], 
+        "description": row[2],
+        "starts_at": row[3], 
+        "ends_at": row[4], 
+        "venue_id": row[5],
+        "organiser_id": row[6],
+        "created_at": row[7],
     }}
