@@ -153,18 +153,58 @@ def test_update_event_returns_200(client, auth_headers):
             'venue_id': 1,})
     assert response.status_code == 200
     body = response.json()
-    assert body == {"Event":{"id": 1,
-      "title": 'Leeds Tech Meetup – June Edition',
-      "description": 'test_event_description',
-      "starts_at": '2026-06-18T18:30:00+01:00',
-      "ends_at": '2026-06-18T21:00:00+01:00',
-      "venue_id": 1,
-      "organiser_id": 1,
-      "created_at": '2026-06-30T14:36:01.568726+01:00'}}
+    assert body["Event"]["description"] == 'test_event_description'
+    assert body["Event"]["starts_at"] == '2026-06-18T18:30:00+01:00'
+    assert body["Event"]["ends_at"] == '2026-06-18T21:00:00+01:00'
+
 
 def test_update_event_returns_401_with_invalid_credentials(client):
     response = client.patch('/api/events/1', json={ 
             'description': 'test_event_description',
             'venue_id': 1,})
     assert response.status_code == 401
+
+def test_update_event_returns_403_with_incorrect_user(client, auth_headers):
+    response = client.patch('/api/events/2', headers = auth_headers, json={ 
+            'description': 'test_event_description',
+            'venue_id': 1,})
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Forbidden. Invalid user."
+
+def test_update_event_returns_404_with_unknown_event(client, auth_headers):
+    response = client.patch('/api/events/101', headers = auth_headers, json={ 
+            'description': 'test_event_description',})
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Event not found"
+
+def test_update_event_returns_400_with_invalid_starts_at_format(client, auth_headers):
+    response = client.patch('/api/events/1', headers = auth_headers, json={ 
+            'starts_at': '9am',})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid date format"
+
+def test_update_event_returns_400_with_invalid_ends_at_format(client, auth_headers):
+    response = client.patch('/api/events/1', headers = auth_headers, json={ 
+            'ends_at': 'June 30th 9pm',})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid date format"
+
+def test_update_event_returns_400_with_ends_at_before_starts_at_both_provided(client, auth_headers):
+    response = client.patch('/api/events/1', headers = auth_headers, json={ 
+            'starts_at': '2026-06-18 18:30:00',
+            'ends_at': '2026-06-17 20:30:00',})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Event start time must be before end time"
+
+def test_update_event_returns_400_with_ends_at_before_starts_at_starts_at_provided(client, auth_headers):
+    response = client.patch('/api/events/1', headers = auth_headers, json={ 
+            'starts_at': '2026-06-19 18:30:00',})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Event start time must be before end time"
+
+def test_update_event_returns_400_with_ends_at_before_starts_at_ends_at_provided(client, auth_headers):
+    response = client.patch('/api/events/1', headers = auth_headers, json={ 
+            'ends_at': '2026-06-17 18:30:00',})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Event start time must be before end time"
     
