@@ -372,3 +372,38 @@ def update_event(payload: dict, event_id: int, user_id = Depends(get_current_use
         "organiser_id": row[6],
         "created_at": row[7],
     }}
+
+@app.get("/api/events/{event_id}/attendees")
+def get_attendees_for_event(event_id, user_id = Depends(get_current_user)):
+
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute("""SELECT *
+            FROM events
+            WHERE id = %s""",
+            (event_id,),)
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code = 404, detail = "Event does not exist")
+
+    with conn.cursor() as cur:
+        cur.execute("""SELECT *
+            FROM events
+            WHERE id = %s and organiser_id = %s""",
+            (event_id, user_id,),)
+        rows = cur.fetchall()
+        if rows == []:
+            raise HTTPException(status_code = 403, detail = "Forbidden. Must be event organiser.")
+
+    with conn.cursor() as cur:
+        cur.execute("""SELECT users.id AS id, users.user_name AS name, 
+            users.email AS email
+            FROM rsvps
+            INNER JOIN users on users.id = rsvps.attendee_id
+            WHERE rsvps.event_id = %s""",
+            (event_id,),)
+        columns = [desc[0] for desc in cur.description]    
+        rows = cur.fetchall()
+        
+        conn.close()
+        return {"Attendees": [dict(zip(columns, row)) for row in rows]}
