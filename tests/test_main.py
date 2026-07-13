@@ -208,3 +208,27 @@ def test_update_event_returns_400_with_ends_at_before_starts_at_ends_at_provided
     assert response.status_code == 400
     assert response.json()["detail"] == "Event start time must be before end time"
     
+def test_get_rsvps_for_events_returns_200(client, auth_headers):
+    response = client.get("/api/events/7/attendees", headers = auth_headers)
+    assert response.status_code == 200
+    events = response.json()['Attendees'] 
+    assert events == [{'id': 4,
+        'name': 'David Okafor',
+        'email': 'david@example.com'},
+        {'id': 6,
+        'name': 'Frank Liu',
+        'email': 'frank@example.com'}]
+
+def test_get_rsvps_with_invalid_token_returns_401(client):
+    response = client.get("/api/events/7/attendees")
+    assert response.status_code == 401
+
+def test_get_rsvps_with_user_who_is_not_organiser_returns_403(client, auth_headers):
+    response = client.get("/api/events/2/attendees", headers = auth_headers)
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Forbidden. Must be event organiser."
+
+def test_get_rsvps_for_nonexistent_event_returns_404(client, auth_headers):
+    response = client.get("/api/events/101/attendees", headers = auth_headers)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Event does not exist"
