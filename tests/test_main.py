@@ -232,3 +232,20 @@ def test_get_rsvps_for_nonexistent_event_returns_404(client, auth_headers):
     response = client.get("/api/events/101/attendees", headers = auth_headers)
     assert response.status_code == 404
     assert response.json()["detail"] == "Event does not exist"
+
+def test_get_user_events_returns_200(client, auth_headers):
+    response = client.get("/api/user/me/events", headers = auth_headers)
+    assert response.status_code == 200
+    event_1 = response.json()['Events'][0]
+    event_2 = response.json()['Events'][1]
+    event_3 = response.json()['Events'][2]
+    event_4 = response.json()['Events'][3]
+    assert event_1['title'] == 'Intro to Machine Learning Workshop'
+    assert event_2['title'] == 'Northern Power Women in Tech'
+    assert event_3['title'] == 'Open Source Contributor Day'
+    assert event_4['title'] == 'Autumn Hackathon 2026'
+
+def test_get_user_events_unauthorised_request_returns_401(client):
+    response = client.get("/api/user/me/events")
+    assert response.status_code == 401
+    
