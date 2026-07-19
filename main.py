@@ -430,3 +430,66 @@ def get_user_events(user_id = Depends(get_current_user)):
         
         conn.close()
         return {"Events": [dict(zip(columns, row)) for row in rows]}
+
+@app.get("/api/organisers/{user_id}/stats")
+def get_organiser_stats(user_id):
+
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute("""SELECT *
+            FROM users
+            WHERE id = %s
+            """,
+            (user_id,),)
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code = 404, detail = "Unknown user")
+
+    with conn.cursor() as cur:
+        cur.execute("""SELECT *
+            FROM events
+            WHERE organiser_id = %s
+            """,
+            (user_id,),)
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code = 404, detail = "User has no events")
+
+    with conn.cursor() as cur:
+        cur.execute("""WITH user_event_attendees AS (
+            SELECT
+            users.id,
+            users.user_name,
+            events.id AS user_events,
+            COUNT(rsvps.attendee_id) AS event_rsvps
+            FROM events
+            INNER JOIN users
+            ON events.organiser_id = users.id
+            LEFT JOIN rsvps
+            ON events.id = rsvps.event_id 
+            GROUP BY users.id, users.user_name, events.id),
+	        ranked_users AS (
+	        SELECT 
+	        id,
+	        user_name,
+	        COUNT(user_events) as total_events,
+            ROUND(AVG(event_rsvps), 1) AS avg_attendance,
+	        MAX(event_rsvps) AS best_attended_count,
+	        RANK() OVER 
+	        (ORDER BY COUNT(user_events) DESC) AS organiser_rank
+	        FROM user_event_attendees
+	        GROUP BY id, user_name)
+            SELECT * 
+            FROM ranked_users
+            WHERE id = %s""",
+            (user_id,),)
+        row = cur.fetchone()
+        conn.close()
+
+        return {"Stats": {"organiser_id": row[0], 
+        "user_name": row[1], 
+        "total_events": row[2],
+        "avg_attendance": row[3], 
+        "best_attended_count": row[4], 
+        "organiser_rank": row[5],
+        }}
