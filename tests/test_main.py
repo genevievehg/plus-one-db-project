@@ -248,4 +248,22 @@ def test_get_user_events_returns_200(client, auth_headers):
 def test_get_user_events_unauthorised_request_returns_401(client):
     response = client.get("/api/user/me/events")
     assert response.status_code == 401
-    
+
+def test_get_organiser_stats_returns_200(client, auth_headers):
+    response = client.get("/api/organisers/1/stats", headers = auth_headers)
+    assert response.status_code == 200
+    assert response.json()['Stats']['user_name'] == 'Alice Rahman'
+    assert 'total_events' in response.json()['Stats']
+    assert 'avg_attendance' in response.json()['Stats']
+    assert 'best_attended_count' in response.json()['Stats']
+    assert 'organiser_rank' in response.json()['Stats']
+
+def test_get_organiser_stats_returns_404_for_unknown_user(client):
+    response = client.get("/api/organisers/99/stats")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Unknown user"
+
+def test_get_organiser_stats_returns_404_for_user_with_no_events(client):
+    response = client.get("/api/organisers/6/stats")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User has no events"
