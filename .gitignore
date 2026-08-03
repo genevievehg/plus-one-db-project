@@ -4,3 +4,4 @@ __pycache__/
 .terraform/
 *.tfstate
 *.tfstate.backup
+db/data/__init__.py
