@@ -2,27 +2,19 @@
 
 A REST API for managing users, venues, events, and RSVPs. Users can view and manage events and RSVPs, with authentication and a PostgreSQL database backend.
 
-The project includes Terraform configuration for provisioning the infrastructure required to run the application in AWS.
+The application can be deployed to AWS using Terraform. The cloud architecture separates the application layer from the database layer, with the FastAPI application running on an EC2 instance and PostgreSQL hosted on Amazon RDS.
+
 
 ## Project Overview
 
-Plus One is a backend application developed using Python and FastAPI. The API can be used for the following:
-- User actions:
-  - View events
-  - Create a user account
-  - Authenticate securely
-  - Create/view/delete personal RSVPs
-- Organiser actions:
-  - View organiser events
-  - Create/update/delete events 
-  - View organiser statistics
-  - View event attendees
- 
+Plus One is a backend application developed using Python and FastAPI, with a PostgreSQL relational database. The API provides authenticated users with functionality to manage events and RSVPs, while organisers can manage events and view attendee and event statistics.
+
+The project was developed to practise backend development, relational database design, SQL, authentication, testing and cloud deployment using infrastructure as code.
 
 ## Requirements
 
 - Python 3.13+
-- PostgreSQL 18+
+- PostgreSQL 14+
 
 ## Local Setup
 
@@ -50,3 +42,27 @@ The server is now running. Visit http://127.0.0.1:8000/docs for documentation.
 
 ## Cloud Deployment
 
+To deploy the infrastructure:
+
+1. Configure the AWS CLI with credentials for an AWS account.
+2. Navigate to the Terraform directory:
+
+    `cd terraform`
+
+3. Initialise Terraform:
+
+    `terraform init`
+
+4. Review the infrastructure changes:
+
+    `terraform plan`
+
+5. Provision the AWS infrastructure:
+
+    `terraform apply`
+
+Terraform outputs the public IP address of the EC2 instance once deployment is complete.
+
+The FastAPI application is then available through the EC2 instance, with the API documentation accessible at:
+
+http://<EC2_PUBLIC_IP>:8000/docs
